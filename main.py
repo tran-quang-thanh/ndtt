@@ -298,16 +298,16 @@ def main(args):
 
 		services = build_gservices()
 		slide_service = services['slides']
-		sheets_service = services['sheets']
+		# sheets_service = services['sheets']
 
 		presentation_id = create_presentation(slide_service, name=args.name)
 		filler_slides(slide_service, presentation_id, n=args.fillers)
 		video_slides(slide_service, presentation_id, urls, duration=args.duration, rows=args.rows, cols=args.cols, w_r=args.width, h_r=args.height)
 
-		spreadsheet_id = create_spreadsheet(sheets_service, name=args.name)
-		create_sheets(sheets_service, spreadsheet_id, ['Guess', 'Total', 'Round'])
-		delete_sheet(sheets_service, spreadsheet_id, 0)
-		populate_spreadsheet(sheets_service, spreadsheet_id, urls)
+		# spreadsheet_id = create_spreadsheet(sheets_service, name=args.name)
+		# create_sheets(sheets_service, spreadsheet_id, ['Guess', 'Total', 'Round'])
+		# delete_sheet(sheets_service, spreadsheet_id, 0)
+		# populate_spreadsheet(sheets_service, spreadsheet_id, urls)
 	except HttpError as err:
 		print(err)
 	else:
