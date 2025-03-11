@@ -10,12 +10,28 @@ from urllib.parse import urlparse, parse_qs
 from functools import cache
 import math
 import csv
+import pandas as pd
+import numpy as np
+from collections import defaultdict
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = [
 	'https://www.googleapis.com/auth/presentations',
 	'https://www.googleapis.com/auth/spreadsheets'
 ]
+
+def custom_shuffle(data):
+	d = defaultdict(list)
+	for song_person in data:
+		d[song_person[1]].append(song_person[0])
+	l = []
+	while len(l) < len(data):
+		people = [person for person in d]
+		total_songs = np.sum([len(d[person]) for person in people])
+		probability = [len(d[person]) / total_songs for person in people]
+		p = np.random.choice(people, 1, p=probability)[0]
+		l.append([d[p].pop(0), p])
+	return l
 
 
 def build_parser():
@@ -78,6 +94,8 @@ def create_slides(service, presentation_id, layout='BLANK', n=1, idx=None):
             }
         } for _ in range(n)
 	]
+	if not requests:
+		return []
 	ret = service.presentations().batchUpdate(presentationId=presentation_id, body={'requests': requests}).execute()
 	return [reply['createSlide']['objectId'] for reply in ret['replies']]
 
@@ -101,7 +119,8 @@ def filler_slides(service, presentation_id, n=1, idx=None):
 				}
 			}
 		])
-	service.presentations().batchUpdate(presentationId=presentation_id, body={'requests': requests}).execute()
+	if requests:
+		service.presentations().batchUpdate(presentationId=presentation_id, body={'requests': requests}).execute()
 
 
 def extract_params_from_youtube_url(url):
@@ -124,7 +143,7 @@ def video_slides(service, presentation_id, urls, duration=0, rows=3, cols=3, w_r
 	video_h = min(1 / rows, h_r) * slide_h
 	video_block_x = max((slide_w - video_w * cols) / 2, 0)
 	video_block_y = max((slide_h - video_h * rows) / 2, 0)
-	params = [extract_params_from_youtube_url(url[1]) for url in urls]
+	params = [extract_params_from_youtube_url(url) for url in urls]
 	requests = []
 	for i in range(len(urls)):
 		requests.append({
@@ -288,13 +307,17 @@ def populate_spreadsheet(service, spreadsheet_id, urls):
 
 def main(args):
 	try:
-		urls = []
+		data = []
 		with open(args.urls, newline='') as f:
 			# urls = f.read().split('\n')
 			for row in csv.reader(f):
-				urls.append(row)
+				data.append(row)
 		if args.shuffle:
-			shuffle(urls)
+			data = custom_shuffle(data)
+		df = pd.DataFrame(data, columns=['url', 'name'])
+		df.to_csv('shuffle_music.csv', index=False)
+		urls = [d[0] for d in data]
+		input('Check if shuffle is good. If good, press ENTER to continue')
 
 		services = build_gservices()
 		slide_service = services['slides']
